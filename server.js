@@ -88,8 +88,19 @@ async function sortPhoto(id, folder) {
   if (!folders.includes(folder)) return { error: 'Choose one of the eight folders', status: 400 };
   const source = photos.get(id);
   if (!insideRoot(source)) return { error: 'Invalid source', status: 400 };
+  const sourceInfo = await fs.lstat(source);
+  if (!sourceInfo.isFile()) return { error: 'Source is no longer a regular file', status: 400 };
+  // Refuse an existing symlink at either destination level. Moves must stay under this project.
+  for (const directory of [sortedRoot, path.join(sortedRoot, folder)]) {
+    try {
+      const info = await fs.lstat(directory);
+      if (!info.isDirectory() || info.isSymbolicLink()) return { error: 'Sorted folder is not a safe directory', status: 400 };
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      await fs.mkdir(directory);
+    }
+  }
   const targetDirectory = path.join(sortedRoot, folder);
-  await fs.mkdir(targetDirectory, { recursive: true });
   const original = path.basename(source);
   const extension = path.extname(original);
   const stem = original.slice(0, -extension.length);
