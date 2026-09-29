@@ -7,7 +7,7 @@ A local photo sorter. Run it on the computer or device that holds your photos. I
 1. Put photos in this folder or in subfolders below it (for example, `Inbox/2024`). Do not put personal photos into this public GitHub repository. Keep them only in your local copy.
 2. Install Node.js 20 or newer.
 3. In this folder, run `npm start`.
-4. Open `http://localhost:3000` on that computer. To use a phone on the same trusted Wi-Fi, set `HOST=0.0.0.0` when starting the server and open the computer's local IP address on port 3000. Keep the server on a trusted private network.
+4. Open `http://localhost:3000` on that computer. To use a phone on the same trusted Wi-Fi, in PowerShell run `$env:HOST='0.0.0.0'; npm start` (or on macOS/Linux run `HOST=0.0.0.0 npm start`), then open the computer's local IP address on port 3000. Keep the server on a trusted private network.
 
 Press **Scan photos** to search below this folder. The app scans JPG, JPEG, PNG, WebP, GIF, BMP, TIFF, AVIF, HEIC and HEIF. Most browsers preview JPG, PNG, WebP, GIF and AVIF; TIFF and HEIC/HEIF may show a file-name placeholder, but you can still sort them. The default destinations live in `Sorted/`. Scan skips files already inside `Sorted/` so they do not reappear in the queue.
 
