@@ -30,9 +30,7 @@ let skipped = new Set();
 let current = null;
 let busy = false;
 let drag = null;
-let previewUrls = new Map();
-let fallbackTried = new Set();
-let previewLoadTimer = null;
+let previewImageId = null;
 let dropPendingId = null;
 
 function message(text) { status.textContent = text; }
@@ -52,30 +50,24 @@ function renderFolders(names) {
   });
 }
 
-function clearPreviewUrls(keepIds = []) {
-  const keep = new Set(keepIds);
-  for (const [id, url] of previewUrls) {
-    if (!keep.has(id)) {
-      URL.revokeObjectURL(url);
-      previewUrls.delete(id);
-    }
-  }
-}
-
 function previewBlob(item) {
   const ext = item.name.slice(item.name.lastIndexOf('.')).toLowerCase();
   const types = { '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.webp':'image/webp', '.gif':'image/gif', '.bmp':'image/bmp', '.tif':'image/tiff', '.tiff':'image/tiff', '.avif':'image/avif', '.heic':'image/heic', '.heif':'image/heif' };
-  if (item.file.type && item.file.type.startsWith('image/')) return item.file;
-  return new Blob([item.file], { type: types[ext] || 'application/octet-stream' });
+  const type = types[ext] || item.file.type || 'application/octet-stream';
+  return item.file.type === type ? item.file : new Blob([item.file], { type });
 }
 
-function previewUrl(item) {
-  if (!previewUrls.has(item.id)) previewUrls.set(item.id, URL.createObjectURL(previewBlob(item)));
-  return previewUrls.get(item.id);
+function loadPreview(item) {
+  previewImageId = item.id;
+  const reader = new FileReader();
+  reader.onload = () => {
+    if (current && current.id === item.id && typeof reader.result === 'string') photoImage.src = reader.result;
+  };
+  reader.onerror = () => showPreviewFallback(item);
+  reader.readAsDataURL(previewBlob(item));
 }
 
 function showNext() {
-  clearTimeout(previewLoadTimer);
   photoCard.classList.remove('dragging','dropping');
   photoCard.style.transform = '';
   current = queue.find(item => !skipped.has(item.id)) || null;
@@ -94,8 +86,7 @@ function showNext() {
     dropPendingId = null;
     empty.querySelector('strong').textContent = (queue.length || scannedCount) ? 'All caught up for now' : 'No pictures found';
     empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : scannedCount ? 'All pictures are sorted.' : 'Choose DCIM/__apictest to load its pictures.';
-    clearPreviewUrls();
-    return;
+      return;
   }
 
   empty.querySelector('strong').textContent = 'Loading picture preview…';
@@ -105,21 +96,9 @@ function showNext() {
     dropPendingId = null;
   }
   photoImage.alt = current.name;
-  photoImage.src = previewUrl(current);
+  loadPreview(current);
   photoImage.hidden = false;
-  const previewItem = current;
-  previewLoadTimer = window.setTimeout(() => {
-    if (current && current.id === previewItem.id && !photoImage.naturalWidth) {
-      photoImage.dispatchEvent(new Event('error'));
-    }
-  }, 4000);
 
-  const next = queue.find(item => item.id !== current.id && !skipped.has(item.id));
-  clearPreviewUrls(next ? [current.id, next.id] : [current.id]);
-  if (next) {
-    const preload = new Image();
-    preload.src = previewUrl(next);
-  }
 }
 
 async function chooseFolder() {
@@ -304,8 +283,7 @@ function folderAtPoint(x,y) {
 }
 
 photoImage.addEventListener('load', () => {
-  clearTimeout(previewLoadTimer);
-  if (!current) return;
+  if (!current || current.id !== previewImageId) return;
   photoImage.hidden = false;
   photoCard.classList.remove('dropped');
   dropPendingId = null;
@@ -313,19 +291,7 @@ photoImage.addEventListener('load', () => {
 });
 
 photoImage.addEventListener('error', () => {
-  const failedItem = current;
-  if (!failedItem) return;
-  if (!fallbackTried.has(failedItem.id)) {
-    fallbackTried.add(failedItem.id);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (current && current.id === failedItem.id) photoImage.src = reader.result;
-    };
-    reader.onerror = () => showPreviewFallback(failedItem);
-    reader.readAsDataURL(previewBlob(failedItem));
-    return;
-  }
-  showPreviewFallback(failedItem);
+  if (current && current.id === previewImageId) showPreviewFallback(current);
 });
 
 function showPreviewFallback(item) {
@@ -397,4 +363,3 @@ skipButton.addEventListener('click', () => {
 });
 chooseButton.addEventListener('click', chooseFolder);
 scanButton.addEventListener('click', scan);
-window.addEventListener('beforeunload', () => clearPreviewUrls());
