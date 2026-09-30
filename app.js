@@ -32,6 +32,7 @@ let busy = false;
 let drag = null;
 let previewUrls = new Map();
 let fallbackTried = new Set();
+let previewLoadTimer = null;
 
 function message(text) { status.textContent = text; }
 
@@ -66,6 +67,7 @@ function previewUrl(item) {
 }
 
 function showNext() {
+  clearTimeout(previewLoadTimer);
   photoCard.classList.remove('dragging','dropping');
   photoCard.style.transform = '';
   current = queue.find(item => !skipped.has(item.id)) || null;
@@ -77,7 +79,7 @@ function showNext() {
   folderButtons.forEach(button => { button.disabled = !current || busy; });
   photoImage.hidden = true;
   photoImage.removeAttribute('src');
-  empty.hidden = !!current;
+  empty.hidden = !current;
 
   if (!current) {
     empty.querySelector('strong').textContent = (queue.length || scannedCount) ? 'All caught up for now' : 'No pictures found';
@@ -86,9 +88,17 @@ function showNext() {
     return;
   }
 
+  empty.querySelector('strong').textContent = 'Loading picture preview…';
+  empty.querySelector('span').textContent = current.name;
   photoImage.alt = current.name;
   photoImage.src = previewUrl(current);
   photoImage.hidden = false;
+  const previewItem = current;
+  previewLoadTimer = window.setTimeout(() => {
+    if (current && current.id === previewItem.id && !photoImage.naturalWidth) {
+      photoImage.dispatchEvent(new Event('error'));
+    }
+  }, 4000);
 
   const next = queue.find(item => item.id !== current.id && !skipped.has(item.id));
   clearPreviewUrls(next ? [current.id, next.id] : [current.id]);
@@ -278,6 +288,7 @@ function folderAtPoint(x,y) {
 }
 
 photoImage.addEventListener('load', () => {
+  clearTimeout(previewLoadTimer);
   if (!current) return;
   photoImage.hidden = false;
   empty.hidden = true;
