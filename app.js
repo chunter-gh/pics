@@ -84,13 +84,9 @@ function showNext() {
     return;
   }
 
-  const ext = current.name.slice(current.name.lastIndexOf('.')).toLowerCase();
-  if (noPreviewExtensions.has(ext)) {
-    empty.hidden = false;
-    photoImage.alt = current.name;
-    photoImage.src = previewUrl(current);
-    photoImage.hidden = false;
-  }
+  photoImage.alt = current.name;
+  photoImage.src = previewUrl(current);
+  photoImage.hidden = false;
 
   const next = queue.find(item => item.id !== current.id && !skipped.has(item.id));
   clearPreviewUrls(next ? [current.id, next.id] : [current.id]);
@@ -162,7 +158,6 @@ async function scan() {
           name,
           handle,
           file,
-          previewable: !noPreviewExtensions.has(ext)
         });
       }
     }
