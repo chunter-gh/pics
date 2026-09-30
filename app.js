@@ -33,6 +33,7 @@ let drag = null;
 let previewUrls = new Map();
 let fallbackTried = new Set();
 let previewLoadTimer = null;
+let dropPendingId = null;
 
 function message(text) { status.textContent = text; }
 
@@ -82,6 +83,8 @@ function showNext() {
   empty.hidden = !current;
 
   if (!current) {
+    photoCard.classList.remove('dropped');
+    dropPendingId = null;
     empty.querySelector('strong').textContent = (queue.length || scannedCount) ? 'All caught up for now' : 'No pictures found';
     empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : scannedCount ? 'All pictures are sorted.' : 'Choose DCIM/__apictest to load its pictures.';
     clearPreviewUrls();
@@ -90,6 +93,10 @@ function showNext() {
 
   empty.querySelector('strong').textContent = 'Loading picture preview…';
   empty.querySelector('span').textContent = current.name;
+  if (dropPendingId === current.id) {
+    photoCard.classList.remove('dropped');
+    dropPendingId = null;
+  }
   photoImage.alt = current.name;
   photoImage.src = previewUrl(current);
   photoImage.hidden = false;
@@ -291,6 +298,8 @@ photoImage.addEventListener('load', () => {
   clearTimeout(previewLoadTimer);
   if (!current) return;
   photoImage.hidden = false;
+  photoCard.classList.remove('dropped');
+  dropPendingId = null;
   empty.hidden = true;
 });
 
@@ -312,6 +321,8 @@ photoImage.addEventListener('error', () => {
 
 function showPreviewFallback(item) {
   if (!current || current.id !== item.id) return;
+  photoCard.classList.remove('dropped');
+  dropPendingId = null;
   photoImage.hidden = true;
   empty.hidden = false;
   empty.querySelector('strong').textContent = item.name;
@@ -352,7 +363,12 @@ function finishDrag(event, commit) {
     photoCard.classList.remove('dragging');
     photoCard.classList.add('dropping');
     photoCard.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(.72)';
-    window.setTimeout(() => { photoCard.classList.remove('dropping'); sortInto(folder); },180);
+    window.setTimeout(() => {
+      photoCard.classList.remove('dropping');
+      photoCard.classList.add('dropped');
+      dropPendingId = current ? current.id : null;
+      sortInto(folder);
+    },180);
   } else {
     photoCard.classList.remove('dragging');
     photoCard.style.transform = '';
