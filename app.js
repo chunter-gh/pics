@@ -86,7 +86,7 @@ function showNext() {
     dropPendingId = null;
     empty.querySelector('strong').textContent = (queue.length || scannedCount) ? 'All caught up for now' : 'No pictures found';
     empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : scannedCount ? 'All pictures are sorted.' : 'Choose DCIM/__apictest to load its pictures.';
-      return;
+    return;
   }
 
   empty.querySelector('strong').textContent = 'Loading picture preview…';
@@ -138,7 +138,6 @@ async function scan() {
   chooseButton.disabled = true;
   scanButton.disabled = true;
   skipButton.disabled = true;
-  clearPreviewUrls();
   queue = [];
   scannedCount = 0;
   skipped = new Set();
@@ -169,7 +168,6 @@ async function scan() {
     nextQueue.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     queue = nextQueue;
     scannedCount = nextQueue.length;
-    fallbackTried = new Set();
     skipped = new Set();
     destinations = new Map([...nextDestinations.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })));
     renderFolders([...destinations.keys()].slice(0, folderButtons.length));
