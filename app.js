@@ -10,7 +10,18 @@ const filename = document.querySelector('#filename');
 const locationLabel = document.querySelector('#location');
 const status = document.querySelector('#status');
 const folderButtons = [...document.querySelectorAll('.folder')];
-const directions = ['Keep', 'Family', 'Friends', 'Trips', 'Pets', 'Screenshots', 'Documents', 'Later'];
+const slotClasses = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+const layouts = {
+  1: ['south'],
+  2: ['west', 'east'],
+  3: ['north', 'southeast', 'southwest'],
+  4: ['north', 'east', 'south', 'west'],
+  5: ['north', 'east', 'southeast', 'southwest', 'west'],
+  6: ['north', 'northeast', 'east', 'south', 'southwest', 'west'],
+  7: ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west'],
+  8: slotClasses
+};
+let destinations = [];
 let queue = [];
 let skipped = new Set();
 let current = null;
@@ -26,6 +37,22 @@ async function api(url, options) {
 
 function message(text) { status.textContent = text; }
 
+function renderFolders(folders) {
+  destinations = folders;
+  const layout = layouts[Math.min(folders.length, folderButtons.length)] || slotClasses;
+  folderButtons.forEach((button, index) => {
+    const position = layout[index];
+    button.hidden = index >= folders.length || !position;
+    if (button.hidden) return;
+    button.dataset.folder = folders[index];
+    button.querySelector('span:last-child').textContent = folders[index];
+    button.querySelector('.folder-icon').textContent = '▱';
+    slotClasses.forEach(name => button.classList.remove(name));
+    button.classList.add('folder', position);
+    button.setAttribute('aria-label', `Sort into ${folders[index]}`);
+  });
+}
+
 function showNext() {
   current = queue.find(item => !skipped.has(item.id)) || null;
   const remaining = queue.length - skipped.size;
@@ -40,7 +67,7 @@ function showNext() {
   empty.hidden = !!current;
   if (!current) {
     empty.querySelector('strong').textContent = queue.length ? 'All caught up for now' : 'No photos found yet';
-    empty.querySelector('span').textContent = queue.length ? 'Scan again to revisit skipped photos.' : 'Add pictures below the Pics folder, then scan.';
+    empty.querySelector('span').textContent = queue.length ? 'Scan again to revisit skipped photos.' : 'Add pictures to your test folder, then scan again.';
     return;
   }
   if (!current.previewable) {
@@ -66,12 +93,16 @@ async function scan() {
   busy = true;
   scanButton.disabled = true;
   skipButton.disabled = true;
-  message('Searching folders below Pics…');
+  message('Looking for pictures…');
   try {
     const data = await api('/api/scan', { method: 'POST' });
     queue = data.photos;
     skipped = new Set();
-    rootLabel.textContent = `Only folders below ${data.root}`;
+    renderFolders(data.folders);
+    rootLabel.textContent = `${data.phoneMode ? 'Phone test folder' : 'Photo folder'}: ${data.root}`;
+    document.querySelector('footer').innerHTML = data.phoneMode
+      ? 'Photos move into the numbered folders you made and stay on your phone.'
+      : 'Sorted originals move into the <strong>Sorted</strong> folder inside this project.';
     message(`Found ${queue.length} picture${queue.length === 1 ? '' : 's'}.`);
   } catch (error) {
     message(error.message);
@@ -107,8 +138,18 @@ async function sortInto(folder) {
 
 function direction(dx, dy) {
   const angle = Math.atan2(dy, dx);
-  const index = (Math.round((angle + Math.PI / 2) / (Math.PI / 4)) + 8) % 8;
-  return directions[index];
+  const card = photoCard.getBoundingClientRect();
+  const cx = card.left + card.width / 2;
+  const cy = card.top + card.height / 2;
+  let best = null;
+  let smallestGap = Infinity;
+  for (const button of folderButtons.filter(item => !item.hidden)) {
+    const rect = button.getBoundingClientRect();
+    const targetAngle = Math.atan2(rect.top + rect.height / 2 - cy, rect.left + rect.width / 2 - cx);
+    const gap = Math.abs(Math.atan2(Math.sin(angle - targetAngle), Math.cos(angle - targetAngle)));
+    if (gap < smallestGap) { smallestGap = gap; best = button.dataset.folder; }
+  }
+  return best;
 }
 function highlight(folder) {
   folderButtons.forEach(button => button.classList.toggle('active', button.dataset.folder === folder));
