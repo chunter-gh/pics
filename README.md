@@ -1,41 +1,30 @@
 # Pics
 
-A local photo sorter. It can run on a computer or on an Android phone with Termux. Photos stay on the device running the server.
+Pics is a browser-only photo sorter. It opens a folder you choose, shows each picture in the middle, and lets you flick it toward a destination folder or tap that folder. Photos are processed in the browser on your device; the page does not upload them.
 
-## Android phone test with Termux
+## Open Pics on your Android phone
 
-This mode scans only picture files directly inside your chosen test folder. Its direct child folders become the destination buttons. Sorting moves a picture into the chosen child folder. Use copied test pictures first.
+The browser folder picker needs a secure web page. Turn on GitHub Pages for this repository:
 
-1. In Termux, allow shared-storage access:
-   `termux-setup-storage`
-   Accept Android's permission prompt.
-2. Install Node.js and Git:
-   `pkg update`
-   `pkg install nodejs-lts git`
-3. Download the PICS project:
-   `cd ~`
-   `git clone https://github.com/chunter-gh/pics.git`
-   `cd pics`
-4. Start the sorter pointed at the test folder:
-   `PHOTO_ROOT="$HOME/storage/shared/DCIM/__apictest" npm start`
-5. Open Chrome on the same phone and visit `http://127.0.0.1:3000`.
+1. Open the repository's **Settings**, then **Pages**.
+2. Under **Build and deployment**, choose **Deploy from a branch**.
+3. Set the branch to **main** and the folder to **/(root)**, then save.
+4. After GitHub publishes it, open https://chunter-gh.github.io/pics/ in Chrome on your phone.
 
-If Termux says it cannot read the folder, run `termux-setup-storage` again and make sure Android granted Termux file access. Keep the server running in Termux while using the page. Stop it with Ctrl+C.
+## Try the safe test folder
 
-For this test, put copied pictures directly inside `DCIM/__apictest` and make the five destination folders directly inside it. The app ignores files already inside those destination folders, so each sorted picture drops out of the queue.
+1. Keep the five copied pictures directly inside DCIM/__apictest.
+2. Keep your five destination folders directly inside DCIM/__apictest.
+3. In Pics, tap **Choose test folder**. In Android's folder picker, choose DCIM, then __apictest.
+4. Grant the browser read and write access when it asks.
+5. Flick a picture toward a folder, or tap a folder. Pics copies it to that folder, then removes the original from the test folder. If the destination already has a file with that name, Pics adds a number to the new copy.
+6. Use **Scan again** to reload the folder and revisit pictures you skipped.
 
-## Computer mode
-
-1. Put photos in this project folder or its subfolders. Do not put personal photos into this public GitHub repository. Keep them only in your local copy.
-2. Install Node.js 20 or newer.
-3. In this folder, run `npm start`.
-4. Open `http://localhost:3000` on that computer. To use a phone on the same trusted Wi-Fi, set `HOST=0.0.0.0` before starting, then open the computer's local IP address on port 3000.
-
-Computer mode scans JPG, JPEG, PNG, WebP, GIF, BMP, TIFF, AVIF, HEIC and HEIF. The default destinations live in `Sorted/`. Flick the centered picture toward a folder or tap it. Sorting moves the original file, and if a name already exists the app adds a number.
+The app scans picture files directly inside the folder you selected. Its immediate subfolders become destination buttons and are not scanned as source folders. Supported formats include JPG, JPEG, PNG, WebP, GIF, BMP, TIFF, AVIF, HEIC and HEIF. Some formats may not preview in Chrome, but can still be sorted.
 
 ## Files
 
-- `index.html` — screen
-- `style.css` — layout and animation
-- `app.js` — gestures and queue
-- `server.js` — local scan, preview and moves
+- index.html — page
+- style.css — layout and animation
+- app.js — folder access, preview, flicking and sorting
+- server.js — optional local web server for testing
