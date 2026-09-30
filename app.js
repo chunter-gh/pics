@@ -105,6 +105,10 @@ function showNext() {
 
 async function chooseFolder() {
   if (busy) return;
+  if (!window.isSecureContext) {
+    message('Open Pics from its HTTPS GitHub Pages address to use phone folder access.');
+    return;
+  }
   if (!window.showDirectoryPicker) {
     message('This browser does not support folder access. Open this page in Chrome on Android.');
     return;
