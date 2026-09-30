@@ -22,7 +22,6 @@ const layouts = {
   8: slotClasses
 };
 const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tif', '.tiff', '.avif', '.heic', '.heif']);
-const noPreviewExtensions = new Set(['.tif', '.tiff', '.heic', '.heif']);
 let rootHandle = null;
 let destinations = new Map();
 let queue = [];
@@ -32,6 +31,7 @@ let current = null;
 let busy = false;
 let drag = null;
 let previewUrls = new Map();
+let fallbackTried = new Set();
 
 function message(text) { status.textContent = text; }
 
@@ -87,9 +87,6 @@ function showNext() {
   const ext = current.name.slice(current.name.lastIndexOf('.')).toLowerCase();
   if (noPreviewExtensions.has(ext)) {
     empty.hidden = false;
-    empty.querySelector('strong').textContent = current.name;
-    empty.querySelector('span').textContent = 'Preview is not supported here, but you can still sort this file.';
-  } else {
     photoImage.alt = current.name;
     photoImage.src = previewUrl(current);
     photoImage.hidden = false;
@@ -97,7 +94,7 @@ function showNext() {
 
   const next = queue.find(item => item.id !== current.id && !skipped.has(item.id));
   clearPreviewUrls(next ? [current.id, next.id] : [current.id]);
-  if (next && !noPreviewExtensions.has(next.name.slice(next.name.lastIndexOf('.')).toLowerCase())) {
+  if (next) {
     const preload = new Image();
     preload.src = previewUrl(next);
   }
@@ -172,6 +169,7 @@ async function scan() {
     nextQueue.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     queue = nextQueue;
     scannedCount = nextQueue.length;
+    fallbackTried = new Set();
     skipped = new Set();
     destinations = new Map([...nextDestinations.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })));
     renderFolders([...destinations.keys()].slice(0, folderButtons.length));
@@ -274,12 +272,35 @@ function highlight(folder) {
   folderButtons.forEach(button => button.classList.toggle('active', button.dataset.folder === folder));
 }
 
+photoImage.addEventListener('load', () => {
+  if (!current) return;
+  photoImage.hidden = false;
+  empty.hidden = true;
+});
+
 photoImage.addEventListener('error', () => {
+  const failedItem = current;
+  if (!failedItem) return;
+  if (!fallbackTried.has(failedItem.id)) {
+    fallbackTried.add(failedItem.id);
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (current && current.id === failedItem.id) photoImage.src = reader.result;
+    };
+    reader.onerror = () => showPreviewFallback(failedItem);
+    reader.readAsDataURL(failedItem.file);
+    return;
+  }
+  showPreviewFallback(failedItem);
+});
+
+function showPreviewFallback(item) {
+  if (!current || current.id !== item.id) return;
   photoImage.hidden = true;
   empty.hidden = false;
-  empty.querySelector('strong').textContent = current ? current.name : 'Preview unavailable';
-  empty.querySelector('span').textContent = 'You can still tap or flick to sort this picture.';
-});
+  empty.querySelector('strong').textContent = item.name;
+  empty.querySelector('span').textContent = 'Chrome could not display this picture format. You can still sort it.';
+}
 
 photoCard.addEventListener('pointerdown', event => {
   if (!current || busy) return;
@@ -293,7 +314,7 @@ photoCard.addEventListener('pointermove', event => {
   const dx = event.clientX - drag.x;
   const dy = event.clientY - drag.y;
   const distance = Math.hypot(dx, dy);
-  photoCard.style.transform = 'translate(' + (dx * .16) + 'px, ' + (dy * .16) + 'px) rotate(' + (dx * .012) + 'deg)';
+  photoCard.style.transform = 'translate(' + (dx * .64) + 'px, ' + (dy * .64) + 'px) rotate(' + (dx * .012) + 'deg)';
   highlight(distance > 28 ? direction(dx, dy) : null);
 });
 
