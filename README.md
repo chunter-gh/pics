@@ -1,30 +1,27 @@
-# Pics
+# A-Pic Test
 
-Pics is a browser-only photo sorter. It opens a folder you choose, shows each picture in the middle, and lets you flick it toward a destination folder or tap that folder. Photos are processed in the browser on your device; the page does not upload them.
+A-Pic Test is a native Android photo sorter. The Android app is in `android/`; it asks you to select a folder with Android's system folder picker, previews each image, and sorts it into one of the selected folder's immediate subfolders. It copies first, then removes the original only after the copy finishes. **Try it with copies of photos first.**
 
-## Open Pics on your Android phone
+## Get the Android app
 
-The browser folder picker needs a secure web page. Turn on GitHub Pages for this repository:
+Every change to the Android project starts a GitHub Actions build. When the **Build A-Pic Test Android APK** workflow finishes:
 
-1. Open the repository's **Settings**, then **Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**.
-3. Set the branch to **main** and the folder to **/(root)**, then save.
-4. After GitHub publishes it, open https://chunter-gh.github.io/pics/ in Chrome on your phone.
+1. Open this repository on GitHub and tap **Actions**.
+2. Open the latest successful **Build A-Pic Test Android APK** run.
+3. Under **Artifacts**, download **A-Pic-Test-debug-apk** and unzip it.
+4. On your Android phone, open `app-debug.apk`. If Android asks, allow installation from the browser or file manager you used to open it, then tap **Install**.
+5. Launch **A-Pic Test**, tap **Choose test folder**, select `DCIM/__apictest`, and grant the folder access prompt.
 
-## Try the safe test folder
+The APK is a debug build for direct testing. It is not signed for Play Store release.
 
-1. Keep the five copied pictures directly inside DCIM/__apictest.
-2. Keep your five destination folders directly inside DCIM/__apictest.
-3. In Pics, tap **Choose test folder**. In Android's folder picker, choose DCIM, then __apictest.
-4. Grant the browser read and write access when it asks.
-5. Flick a picture toward a folder, or tap a folder. Pics copies it to that folder, then removes the original from the test folder. If the destination already has a file with that name, Pics adds a number to the new copy.
-6. Use **Scan again** to reload the folder and revisit pictures you skipped.
+## Test folder
 
-The app scans picture files directly inside the folder you selected. Its immediate subfolders become destination buttons and are not scanned as source folders. Supported formats include JPG, JPEG, PNG, WebP, GIF, BMP, TIFF, AVIF, HEIC and HEIF. Some formats may not preview in Chrome, but can still be sorted.
+Use `DCIM/__apictest` with copied images directly inside and destination folders `1` through `5` beside them. The app reads only images directly inside the selected folder; its immediate child folders are destination buttons. A successful sort copies the image into the selected folder, then deletes its original from the selected test folder. If a name already exists, it chooses a numbered copy name. The app includes Skip and Undo last move.
 
-## Files
+Supported filename extensions: JPG, JPEG, PNG, WebP, GIF, BMP, TIFF, AVIF, HEIC, and HEIF. Preview support depends on the Android version and image decoder; the app reports when Android cannot decode a preview.
 
-- index.html — page
-- style.css — layout and animation
-- app.js — folder access, preview, flicking and sorting
-- server.js — optional local web server for testing
+## Build locally
+
+Install JDK 17 and Android SDK platform 35, then run `gradle assembleDebug` from the repository root. The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+The repository also retains the earlier browser prototype in the root `index.html`, `app.js`, and `style.css` files.
