@@ -152,7 +152,7 @@ async function sortPhoto(id, folder) {
   }
   await fs.rename(source, destination);
   photos.delete(id);
-  return { movedTo: path.relative(root, destination), remaining: photos.size };
+  return { movedTo: path.relative(photoRoot, destination), remaining: photos.size };
 }
 
 const server = http.createServer(async (request, response) => {
