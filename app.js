@@ -26,6 +26,7 @@ const noPreviewExtensions = new Set(['.tif', '.tiff', '.heic', '.heif']);
 let rootHandle = null;
 let destinations = new Map();
 let queue = [];
+let scannedCount = 0;
 let skipped = new Set();
 let current = null;
 let busy = false;
@@ -77,8 +78,8 @@ function showNext() {
   empty.hidden = !!current;
 
   if (!current) {
-    empty.querySelector('strong').textContent = queue.length ? 'All caught up for now' : 'Choose your test folder to begin';
-    empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : 'Choose DCIM/__apictest to load its pictures.';
+    empty.querySelector('strong').textContent = (queue.length || scannedCount) ? 'All caught up for now' : 'No pictures found';
+    empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : scannedCount ? 'All pictures are sorted.' : 'Choose DCIM/__apictest to load its pictures.';
     clearPreviewUrls();
     return;
   }
@@ -135,6 +136,12 @@ async function scan() {
   chooseButton.disabled = true;
   scanButton.disabled = true;
   skipButton.disabled = true;
+  clearPreviewUrls();
+  queue = [];
+  scannedCount = 0;
+  skipped = new Set();
+  destinations = new Map();
+  renderFolders([]);
   message('Reading the selected folder…');
   try {
     const permission = await rootHandle.requestPermission({ mode: 'readwrite' });
@@ -160,6 +167,7 @@ async function scan() {
     }
     nextQueue.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     queue = nextQueue;
+    scannedCount = nextQueue.length;
     skipped = new Set();
     destinations = new Map([...nextDestinations.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })));
     renderFolders([...destinations.keys()].slice(0, folderButtons.length));
