@@ -66,6 +66,8 @@ function previewUrl(item) {
 }
 
 function showNext() {
+  photoCard.classList.remove('dragging','dropping');
+  photoCard.style.transform = '';
   current = queue.find(item => !skipped.has(item.id)) || null;
   const remaining = queue.length - skipped.size;
   count.textContent = queue.length ? remaining + ' to sort · ' + queue.length + ' found' : 'No pictures found';
@@ -266,6 +268,14 @@ function direction(dx, dy) {
 function highlight(folder) {
   folderButtons.forEach(button => button.classList.toggle('active', button.dataset.folder === folder));
 }
+function folderAtPoint(x,y) {
+  const found = folderButtons.find(button => {
+    if (button.hidden) return false;
+    const rect = button.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  });
+  return found ? found.dataset.folder : null;
+}
 
 photoImage.addEventListener('load', () => {
   if (!current) return;
@@ -299,7 +309,8 @@ function showPreviewFallback(item) {
 
 photoCard.addEventListener('pointerdown', event => {
   if (!current || busy) return;
-  drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  const rect = photoCard.getBoundingClientRect();
+  drag = { id:event.pointerId, x:event.clientX, y:event.clientY, left:rect.left, top:rect.top, width:rect.width, height:rect.height };
   photoCard.setPointerCapture(event.pointerId);
   photoCard.classList.add('dragging');
 });
@@ -310,18 +321,31 @@ photoCard.addEventListener('pointermove', event => {
   const dy = event.clientY - drag.y;
   const distance = Math.hypot(dx, dy);
   photoCard.style.transform = 'translate(' + (dx * .64) + 'px, ' + (dy * .64) + 'px) rotate(' + (dx * .012) + 'deg)';
-  highlight(distance > 28 ? direction(dx, dy) : null);
+  highlight(folderAtPoint(event.clientX,event.clientY) || (distance > 28 ? direction(dx,dy) : null));
 });
 
 function finishDrag(event, commit) {
   if (!drag || event.pointerId !== drag.id) return;
   const dx = event.clientX - drag.x;
   const dy = event.clientY - drag.y;
+  const distance = Math.hypot(dx,dy);
+  const folder = commit ? (folderAtPoint(event.clientX,event.clientY) || (distance > 45 ? direction(dx,dy) : null)) : null;
+  const start = drag;
   drag = null;
-  photoCard.classList.remove('dragging');
-  photoCard.style.transform = '';
   highlight(null);
-  if (commit && Math.hypot(dx, dy) > 45) sortInto(direction(dx, dy));
+  if (folder) {
+    const target = folderButtons.find(button => button.dataset.folder === folder);
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2 - (start.left + start.width / 2);
+    const y = rect.top + rect.height / 2 - (start.top + start.height / 2);
+    photoCard.classList.remove('dragging');
+    photoCard.classList.add('dropping');
+    photoCard.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(.72)';
+    window.setTimeout(() => { photoCard.classList.remove('dropping'); sortInto(folder); },180);
+  } else {
+    photoCard.classList.remove('dragging');
+    photoCard.style.transform = '';
+  }
 }
 
 photoCard.addEventListener('pointerup', event => finishDrag(event, true));
