@@ -62,8 +62,15 @@ function clearPreviewUrls(keepIds = []) {
   }
 }
 
+function previewBlob(item) {
+  const ext = item.name.slice(item.name.lastIndexOf('.')).toLowerCase();
+  const types = { '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.webp':'image/webp', '.gif':'image/gif', '.bmp':'image/bmp', '.tif':'image/tiff', '.tiff':'image/tiff', '.avif':'image/avif', '.heic':'image/heic', '.heif':'image/heif' };
+  if (item.file.type && item.file.type.startsWith('image/')) return item.file;
+  return new Blob([item.file], { type: types[ext] || 'application/octet-stream' });
+}
+
 function previewUrl(item) {
-  if (!previewUrls.has(item.id)) previewUrls.set(item.id, URL.createObjectURL(item.file));
+  if (!previewUrls.has(item.id)) previewUrls.set(item.id, URL.createObjectURL(previewBlob(item)));
   return previewUrls.get(item.id);
 }
 
@@ -227,7 +234,7 @@ async function sortInto(folderName) {
   busy = true;
   skipButton.disabled = true;
   folderButtons.forEach(button => { button.disabled = true; });
-  message('Moving to ' + folderName + '…');
+  message('Moving ' + chosen.name + ' to folder ' + folderName + '…');
 
   let targetName = '';
   let targetCreated = false;
@@ -235,10 +242,12 @@ async function sortInto(folderName) {
     targetName = await unusedName(destination, chosen.name);
     const target = await destination.getFileHandle(targetName, { create: true });
     targetCreated = true;
+    message('Copying ' + chosen.name + ' into folder ' + folderName + '…');
     const writable = await target.createWritable();
     await writable.write(chosen.file);
     await writable.close();
 
+    message('Removing original ' + chosen.name + '…');
     try {
       await rootHandle.removeEntry(chosen.name);
     } catch (error) {
@@ -256,7 +265,7 @@ async function sortInto(folderName) {
     if (targetCreated) {
       try { await destination.removeEntry(targetName); } catch {}
     }
-    message(error.message || 'Could not move that picture.');
+    message('Move failed (' + (error.name || 'error') + '): ' + (error.message || 'Could not move that picture.'));
   } finally {
     busy = false;
     showNext();
@@ -313,7 +322,7 @@ photoImage.addEventListener('error', () => {
       if (current && current.id === failedItem.id) photoImage.src = reader.result;
     };
     reader.onerror = () => showPreviewFallback(failedItem);
-    reader.readAsDataURL(failedItem.file);
+    reader.readAsDataURL(previewBlob(failedItem));
     return;
   }
   showPreviewFallback(failedItem);
@@ -326,7 +335,8 @@ function showPreviewFallback(item) {
   photoImage.hidden = true;
   empty.hidden = false;
   empty.querySelector('strong').textContent = item.name;
-  empty.querySelector('span').textContent = 'Chrome could not display this picture format. You can still sort it.';
+  empty.querySelector('span').textContent = 'Chrome could not display this picture. You can still sort it.';
+  message('Preview failed for ' + item.name + ' (' + (item.file.type || 'file type not reported') + ').');
 }
 
 photoCard.addEventListener('pointerdown', event => {
