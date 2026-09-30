@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const photoRoot = path.resolve(process.env.PHOTO_ROOT || root);
+const phoneMode = Boolean(process.env.PHOTO_ROOT);
 const sortedRoot = path.join(root, 'Sorted');
 const extensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tif', '.tiff', '.avif', '.heic', '.heif']);
 const mime = {
@@ -12,7 +14,8 @@ const mime = {
   '.tif': 'image/tiff', '.tiff': 'image/tiff', '.avif': 'image/avif',
   '.heic': 'image/heic', '.heif': 'image/heif'
 };
-const folders = ['Keep', 'Family', 'Friends', 'Trips', 'Pets', 'Screenshots', 'Documents', 'Later'];
+const defaultFolders = ['Keep', 'Family', 'Friends', 'Trips', 'Pets', 'Screenshots', 'Documents', 'Later'];
+let folders = defaultFolders;
 const staticFiles = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
   ['/index.html', ['index.html', 'text/html; charset=utf-8']],
@@ -21,13 +24,16 @@ const staticFiles = new Map([
 ]);
 let photos = new Map();
 
-function insideRoot(file) {
-  const relative = path.relative(root, file);
+function isInside(base, file) {
+  const relative = path.relative(base, file);
   return relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
 }
 
+function insideRoot(file) { return isInside(root, file); }
+function insidePhotoRoot(file) { return isInside(photoRoot, file); }
+
 function publicPhoto(file) {
-  const relative = path.relative(root, file);
+  const relative = path.relative(photoRoot, file);
   return {
     id: Buffer.from(relative).toString('base64url'),
     name: path.basename(file),
@@ -37,8 +43,25 @@ function publicPhoto(file) {
 }
 
 async function scan() {
+  if (phoneMode) {
+    try {
+      const entries = await fs.readdir(photoRoot, { withFileTypes: true });
+      folders = entries
+        .filter(entry => entry.isDirectory() && /^[a-zA-Z0-9 _-]+$/.test(entry.name))
+        .map(entry => entry.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    } catch (error) {
+      if (error.code === 'EACCES' || error.code === 'EPERM') {
+        throw new Error('Termux cannot read this folder yet. Run termux-setup-storage and grant file access.');
+      }
+      throw error;
+    }
+    if (!folders.length) throw new Error('Create destination folders directly inside the selected photo folder, then scan again.');
+  } else {
+    folders = defaultFolders;
+  }
   const found = [];
-  const pending = [root];
+  const pending = [photoRoot];
   while (pending.length) {
     const directory = pending.pop();
     let entries;
@@ -51,22 +74,22 @@ async function scan() {
     entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     for (const entry of entries) {
       const file = path.join(directory, entry.name);
-      if (!insideRoot(file)) continue;
+      if (!insidePhotoRoot(file)) continue;
       if (entry.isDirectory()) {
-        if (file !== sortedRoot && !['.git', 'node_modules'].includes(entry.name)) pending.push(file);
+        if (!phoneMode && file !== sortedRoot && !['.git', 'node_modules'].includes(entry.name)) pending.push(file);
       } else if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) {
         found.push(file);
       }
       // Dirent symlinks are deliberately ignored, even when they point inside root.
     }
   }
-  found.sort((a, b) => path.relative(root, a).localeCompare(path.relative(root, b), undefined, { numeric: true }));
+  found.sort((a, b) => path.relative(photoRoot, a).localeCompare(path.relative(photoRoot, b), undefined, { numeric: true }));
   photos = new Map(found.map(file => [publicPhoto(file).id, file]));
   return list();
 }
 
 function list() {
-  return { root: path.basename(root), folders, photos: [...photos.values()].map(publicPhoto) };
+  return { root: path.basename(photoRoot), phoneMode, folders, photos: [...photos.values()].map(publicPhoto) };
 }
 
 function json(response, code, value) {
@@ -85,22 +108,35 @@ async function body(request) {
 
 async function sortPhoto(id, folder) {
   if (typeof id !== 'string' || !photos.has(id)) return { error: 'Photo is no longer in the queue', status: 404 };
-  if (!folders.includes(folder)) return { error: 'Choose one of the eight folders', status: 400 };
+  if (!folders.includes(folder) || path.basename(folder) !== folder) return { error: 'Choose one of the available destination folders', status: 400 };
   const source = photos.get(id);
-  if (!insideRoot(source)) return { error: 'Invalid source', status: 400 };
+  if (!insidePhotoRoot(source)) return { error: 'Invalid source', status: 400 };
   const sourceInfo = await fs.lstat(source);
   if (!sourceInfo.isFile()) return { error: 'Source is no longer a regular file', status: 400 };
-  // Refuse an existing symlink at either destination level. Moves must stay under this project.
-  for (const directory of [sortedRoot, path.join(sortedRoot, folder)]) {
+  let targetDirectory;
+  if (phoneMode) {
+    targetDirectory = path.join(photoRoot, folder);
     try {
-      const info = await fs.lstat(directory);
-      if (!info.isDirectory() || info.isSymbolicLink()) return { error: 'Sorted folder is not a safe directory', status: 400 };
+      const info = await fs.lstat(targetDirectory);
+      if (!info.isDirectory() || info.isSymbolicLink() || path.dirname(targetDirectory) !== photoRoot) {
+        return { error: 'Destination folder is not a safe child folder', status: 400 };
+      }
     } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-      await fs.mkdir(directory);
+      if (error.code === 'ENOENT') return { error: 'Destination folder no longer exists; scan again', status: 404 };
+      throw error;
     }
+  } else {
+    for (const directory of [sortedRoot, path.join(sortedRoot, folder)]) {
+      try {
+        const info = await fs.lstat(directory);
+        if (!info.isDirectory() || info.isSymbolicLink()) return { error: 'Sorted folder is not a safe directory', status: 400 };
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        await fs.mkdir(directory);
+      }
+    }
+    targetDirectory = path.join(sortedRoot, folder);
   }
-  const targetDirectory = path.join(sortedRoot, folder);
   const original = path.basename(source);
   const extension = path.extname(original);
   const stem = original.slice(0, -extension.length);
@@ -132,7 +168,7 @@ const server = http.createServer(async (request, response) => {
       json(response, 200, await scan());
     } else if (request.method === 'GET' && url.pathname === '/api/photo') {
       const file = photos.get(url.searchParams.get('id'));
-      if (!file || !insideRoot(file)) return json(response, 404, { error: 'Photo not found' });
+      if (!file || !insidePhotoRoot(file)) return json(response, 404, { error: 'Photo not found' });
       const stat = await fs.lstat(file);
       if (!stat.isFile()) return json(response, 404, { error: 'Photo not found' });
       response.writeHead(200, {
