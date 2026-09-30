@@ -147,6 +147,16 @@ async function scan() {
   try {
     const permission = await rootHandle.requestPermission({ mode: 'readwrite' });
     if (permission !== 'granted') throw new Error('Chrome needs write permission to sort pictures.');
+    let firstHandle;
+    let firstFile;
+    try {
+      firstHandle = await rootHandle.getFileHandle('1.jpg');
+      firstFile = await firstHandle.getFile();
+    } catch (error) {
+      if (error.name === 'NotFoundError') throw new Error('Could not directly open 1.jpg in the selected folder. Check the exact filename.');
+      throw error;
+    }
+    const firstItem = { id: 'hardwired-first', name: firstHandle.name, handle: firstHandle, file: firstFile };
     const nextQueue = [];
     const nextDestinations = new Map();
     let id = 0;
@@ -155,7 +165,7 @@ async function scan() {
         nextDestinations.set(name, handle);
       } else if (handle.kind === 'file') {
         const ext = name.slice(name.lastIndexOf('.')).toLowerCase();
-        if (!imageExtensions.has(ext)) continue;
+        if (!imageExtensions.has(ext) || name.toLowerCase() === firstHandle.name.toLowerCase()) continue;
         const file = await handle.getFile();
         nextQueue.push({
           id: String(id++),
@@ -166,13 +176,13 @@ async function scan() {
       }
     }
     nextQueue.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    queue = nextQueue;
-    scannedCount = nextQueue.length;
+    queue = [firstItem, ...nextQueue];
+    scannedCount = queue.length;
     skipped = new Set();
     destinations = new Map([...nextDestinations.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })));
     renderFolders([...destinations.keys()].slice(0, folderButtons.length));
     rootLabel.textContent = 'Selected folder: ' + rootHandle.name;
-    message('Found ' + queue.length + ' picture' + (queue.length === 1 ? '' : 's') + ' and ' + destinations.size + ' destination folders.');
+    message('Found ' + queue.length + ' pictures and ' + destinations.size + ' destination folders. Opened 1.jpg directly (' + firstFile.size + ' bytes).');
     if (!destinations.size) message('Make destination folders inside this folder, then scan again.');
   } catch (error) {
     message(error.message || 'Could not read the selected folder.');
