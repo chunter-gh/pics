@@ -31,6 +31,7 @@ let current = null;
 let busy = false;
 let drag = null;
 let previewImageId = null;
+let previewObjectUrl = null;
 let dropPendingId = null;
 
 function message(text) { status.textContent = text; }
@@ -59,12 +60,19 @@ function previewBlob(item) {
 
 function loadPreview(item) {
   previewImageId = item.id;
-  const reader = new FileReader();
-  reader.onload = () => {
-    if (current && current.id === item.id && typeof reader.result === 'string') photoImage.src = reader.result;
-  };
-  reader.onerror = () => showPreviewFallback(item);
-  reader.readAsDataURL(previewBlob(item));
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+  }
+
+  try {
+    const blob = previewBlob(item);
+    previewObjectUrl = URL.createObjectURL(blob);
+    photoImage.src = previewObjectUrl;
+    message('Reading ' + item.name + ' directly from the selected Android folder (' + item.file.size + ' bytes, ' + (blob.type || 'type unknown') + ').');
+  } catch (error) {
+    showPreviewFallback(item, error);
+  }
 }
 
 function showNext() {
@@ -303,7 +311,7 @@ photoImage.addEventListener('error', () => {
   if (current && current.id === previewImageId) showPreviewFallback(current);
 });
 
-function showPreviewFallback(item) {
+function showPreviewFallback(item, error = null) {
   if (!current || current.id !== item.id) return;
   photoCard.classList.remove('dropped');
   dropPendingId = null;
@@ -311,7 +319,7 @@ function showPreviewFallback(item) {
   empty.hidden = false;
   empty.querySelector('strong').textContent = item.name;
   empty.querySelector('span').textContent = 'Chrome could not display this picture. You can still sort it.';
-  message('Preview failed for ' + item.name + ' (' + (item.file.type || 'file type not reported') + ').');
+  message('Preview failed for ' + item.name + ' (' + item.file.size + ' bytes, ' + (item.file.type || 'file type not reported') + ')' + (error ? ': ' + error.message : '') + '.');
 }
 
 photoCard.addEventListener('pointerdown', event => {
