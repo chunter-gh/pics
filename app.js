@@ -58,7 +58,7 @@ function previewBlob(item) {
   return item.file.type === type ? item.file : new Blob([item.file], { type });
 }
 
-function loadPreview(item) {
+async function loadPreview(item) {
   previewImageId = item.id;
   if (previewObjectUrl) {
     URL.revokeObjectURL(previewObjectUrl);
@@ -66,10 +66,22 @@ function loadPreview(item) {
   }
 
   try {
-    const blob = previewBlob(item);
-    previewObjectUrl = URL.createObjectURL(blob);
-    photoImage.src = previewObjectUrl;
-    message('Reading ' + item.name + ' directly from the selected Android folder (' + item.file.size + ' bytes, ' + (blob.type || 'type unknown') + ').');
+    const bytes = await item.file.arrayBuffer();
+    const header = [...new Uint8Array(bytes.slice(0, 4))]
+      .map(value => value.toString(16).padStart(2, '0').toUpperCase())
+      .join(' ');
+    const isJpeg = header.startsWith('FF D8 FF');
+    message('Read ' + item.name + ': ' + bytes.byteLength + ' bytes. Header ' + header + (isJpeg ? ' (JPEG).' : ' (not a JPEG signature).'));
+
+    const blob = new Blob([bytes], { type: 'image/jpeg' });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d');
+    context.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    photoImage.src = canvas.toDataURL('image/png');
   } catch (error) {
     showPreviewFallback(item, error);
   }
@@ -93,7 +105,7 @@ function showNext() {
     photoCard.classList.remove('dropped');
     dropPendingId = null;
     empty.querySelector('strong').textContent = (queue.length || scannedCount) ? 'All caught up for now' : 'No pictures found';
-    empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : scannedCount ? 'All pictures are sorted.' : 'Choose DCIM/__apictest to load its pictures.';
+    empty.querySelector('span').textContent = queue.length ? 'Press Scan again to revisit skipped pictures.' : scannedCount ? 'All pictures are sorted.' : 'Choose DCIM/__atestpic to load its pictures.';
     return;
   }
 
@@ -139,7 +151,7 @@ async function chooseFolder() {
 async function scan() {
   if (busy) return;
   if (!rootHandle) {
-    message('Choose DCIM/__apictest first.');
+    message('Choose DCIM/__atestpic first.');
     return;
   }
   busy = true;
