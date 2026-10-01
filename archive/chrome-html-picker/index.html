@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#16314f">
+  <meta name="description" content="Sort photos on your phone with a quick flick.">
+  <title>Pics — Flick to Sort</title>
+  <link rel="stylesheet" href="./style.css?v=b30a554">
+  <script src="./app.js?v=f5afebb" defer></script>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">YOUR PHOTO SORTER</p>
+        <h1>Pics<span class="spark">✦</span></h1>
+      </div>
+      <div class="header-actions">
+        <button id="choose" class="scan" type="button">Choose test folder</button>
+        <button id="scan" class="secondary" type="button" hidden>Scan again</button>
+      </div>
+    </header>
+    <section class="summary" aria-label="Scan progress">
+      <span id="count">Choose a folder to begin</span>
+      <span id="root">No folder selected</span>
+    </section>
+    <p class="instruction">Choose your test folder. Flick the picture toward a folder, or tap a folder to sort it.</p>
+    <section class="board" aria-label="Photo sorting board">
+      <button class="folder north" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder northeast" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder east" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder southeast" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder south" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder southwest" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder west" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <button class="folder northwest" data-folder="" type="button" hidden><span class="folder-icon">▱</span><span>Folder</span></button>
+      <div id="photoCard" class="photo-card" role="group" aria-label="Current photo">
+        <div id="photoEmpty" class="empty">
+          <div class="empty-symbol">▧</div>
+          <strong>Your next photo appears here</strong>
+          <span>Choose DCIM/__apictest to load its pictures.</span>
+        </div>
+        <img id="photo" alt="" draggable="false" hidden>
+      </div>
+    </section>
+    <div class="photo-info"><span id="filename"></span><span id="location"></span></div>
+    <div class="actions">
+      <button id="skip" type="button" disabled>Skip for now →</button>
+      <span id="status" role="status" aria-live="polite"></span>
+    </div>
+    <footer>Your photos stay on this phone. Pics does not upload them.</footer>
+  </main>
+</body>
+</html>
