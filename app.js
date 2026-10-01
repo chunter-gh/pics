@@ -238,11 +238,12 @@ async function sortInto(folderName) {
     try {
       await rootHandle.removeEntry(chosen.name);
     } catch (error) {
-      try { await destination.removeEntry(targetName); targetCreated = false; } catch {}
-      if (targetCreated) {
-        throw new Error('Chrome copied the picture but could not remove the original. Check both folders before continuing.');
-      }
-      throw new Error('Chrome could not remove the original, so it was left in place.');
+      // Keep the completed copy. Android browser storage providers may allow writing
+      // the destination while refusing to delete the source through the selected tree.
+      queue = queue.filter(item => item.id !== chosen.id);
+      skipped.delete(chosen.id);
+      message('Copied ' + chosen.name + ' into ' + folderName + ', but the original could not be removed and remains in the selected folder.');
+      return;
     }
 
     queue = queue.filter(item => item.id !== chosen.id);
