@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
             String msg;
             DocumentFile copied = null;
             boolean copyComplete = false;
+            boolean sourceDeleted = false;
             try {
                 String mime = getContentResolver().getType(src.getUri());
                 copied = dest.createFile(mime == null ? "application/octet-stream" : mime, uniqueName(dest, srcName));
@@ -94,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
                     msg = "Copied " + srcName + " to " + dest.getName()
                             + ", but the original could not be removed and remains in the selected folder.";
                 } else {
+                    sourceDeleted = true;
                     msg = "Moved " + srcName + " to " + dest.getName() + ".";
                 }
             } catch (Exception ex) {
@@ -105,12 +107,13 @@ public class MainActivity extends AppCompatActivity {
             }
             final DocumentFile saved = copied;
             final boolean savedCopy = copyComplete;
+            final boolean movedSource = sourceDeleted;
             final String result = msg;
             runOnUiThread(() -> {
                 working = false;
                 if (savedCopy) {
-                    undoDestination = saved;
-                    undoOriginalName = srcName;
+                    undoDestination = movedSource ? saved : null;
+                    undoOriginalName = movedSource ? srcName : null;
                     photos.remove(position);
                     showCurrent();
                 } else {
