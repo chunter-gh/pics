@@ -67,6 +67,58 @@ public class MainActivity extends AppCompatActivity {
     private byte[] readBytes(InputStream in)throws Exception{java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] b=new byte[32768];int n;while((n=in.read(b))!=-1)out.write(b,0,n);return out.toByteArray();}
     private void chooseDirection(float dx,float dy,float releaseX){if(folders.isEmpty()){status.setText("There are no destination folders." );return;}int[] loc=new int[2];targets.getLocationOnScreen(loc);float fraction=(releaseX-loc[0])/(float)Math.max(1,targets.getWidth());int ix=Math.max(0,Math.min(folders.size()-1,(int)(fraction*folders.size())));moveTo(ix);}
     private String uniqueName(DocumentFile dir,String name){if(dir.findFile(name)==null)return name;int dot=name.lastIndexOf('.');String base=dot>0?name.substring(0,dot):name,ext=dot>0?name.substring(dot):"";int n=2;while(dir.findFile(base+" ("+n+")"+ext)!=null)n++;return base+" ("+n+")"+ext;}
-    private void moveTo(int ix){if(working||position>=photos.size()||ix<0||ix>=folders.size())return;working=true;DocumentFile src=photos.get(position),dest=folders.get(ix);String srcName=src.getName();status.setText("Moving "+srcName+" to "+dest.getName()+"…");new Thread(()->{String msg;DocumentFile copied=null;try{copied=dest.createFile(getContentResolver().getType(src.getUri())==null?"application/octet-stream":getContentResolver().getType(src.getUri()),uniqueName(dest,srcName));if(copied==null)throw new Exception("Android could not create the destination file.");try(InputStream in=new BufferedInputStream(getContentResolver().openInputStream(src.getUri()));OutputStream out=new BufferedOutputStream(getContentResolver().openOutputStream(copied.getUri(),"w"))){if(in==null||out==null)throw new Exception("Could not open source or destination.");byte[] b=new byte[65536];int n;while((n=in.read(b))!=-1)out.write(b,0,n);out.flush();}if(!src.delete())throw new Exception("Copied it, but Android refused to delete original. Recheck folder access.");msg="Moved "+srcName+" to "+dest.getName()+".";}catch(Exception ex){if(copied!=null)copied.delete();msg="Move failed ("+ex.getClass().getSimpleName()+"): "+ex.getMessage();}final DocumentFile saved=copied;final String result=msg;runOnUiThread(()->{working=false;if(result.startsWith("Moved ")){undoDestination=saved;undoOriginalName=srcName;photos.remove(position);showCurrent();}else{image.animate().translationX(0).translationY(0).setDuration(130).start();}status.setText(result);});}).start();}
+    private void moveTo(int ix) {
+        if (working || position >= photos.size() || ix < 0 || ix >= folders.size()) return;
+        working = true;
+        DocumentFile src = photos.get(position), dest = folders.get(ix);
+        String srcName = src.getName();
+        status.setText("Moving " + srcName + " to " + dest.getName() + "…");
+        new Thread(() -> {
+            String msg;
+            DocumentFile copied = null;
+            boolean copyComplete = false;
+            try {
+                String mime = getContentResolver().getType(src.getUri());
+                copied = dest.createFile(mime == null ? "application/octet-stream" : mime, uniqueName(dest, srcName));
+                if (copied == null) throw new Exception("Android could not create the destination file.");
+                try (InputStream in = new BufferedInputStream(getContentResolver().openInputStream(src.getUri()));
+                     OutputStream out = new BufferedOutputStream(getContentResolver().openOutputStream(copied.getUri(), "w"))) {
+                    if (in == null || out == null) throw new Exception("Could not open source or destination.");
+                    byte[] buffer = new byte[65536];
+                    int n;
+                    while ((n = in.read(buffer)) != -1) out.write(buffer, 0, n);
+                    out.flush();
+                }
+                copyComplete = true;
+                if (!src.delete()) {
+                    msg = "Copied " + srcName + " to " + dest.getName()
+                            + ", but the original could not be removed and remains in the selected folder.";
+                } else {
+                    msg = "Moved " + srcName + " to " + dest.getName() + ".";
+                }
+            } catch (Exception ex) {
+                if (copied != null && !copyComplete) copied.delete();
+                msg = copyComplete
+                        ? "Copied " + srcName + " to " + dest.getName()
+                                + ", but the original could not be removed and remains in the selected folder."
+                        : "Move failed (" + ex.getClass().getSimpleName() + "): " + ex.getMessage();
+            }
+            final DocumentFile saved = copied;
+            final boolean savedCopy = copyComplete;
+            final String result = msg;
+            runOnUiThread(() -> {
+                working = false;
+                if (savedCopy) {
+                    undoDestination = saved;
+                    undoOriginalName = srcName;
+                    photos.remove(position);
+                    showCurrent();
+                } else {
+                    image.animate().translationX(0).translationY(0).setDuration(130).start();
+                }
+                status.setText(result);
+            });
+        }).start();
+    }
     private void undoMove(){if(undoDestination==null||root==null||working){status.setText("There is no recent move to undo.");return;}working=true;DocumentFile moved=undoDestination;String name=undoOriginalName;new Thread(()->{String msg;try{String mime=getContentResolver().getType(moved.getUri());DocumentFile restored=root.createFile(mime==null?"application/octet-stream":mime,uniqueName(root,name));try(InputStream in=getContentResolver().openInputStream(moved.getUri());OutputStream out=getContentResolver().openOutputStream(restored.getUri(),"w")){if(in==null||out==null)throw new Exception("Could not open file.");byte[] b=new byte[65536];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}if(!moved.delete())throw new Exception("Restored, but could not remove sorted copy.");msg="Move undone.";undoDestination=null;}catch(Exception ex){msg="Undo failed: "+ex.getMessage();}String result=msg;runOnUiThread(()->{working=false;if(result.equals("Move undone."))scan();status.setText(result);});}).start();}
 }
