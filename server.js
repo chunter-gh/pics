@@ -91,6 +91,16 @@ function list() {
   return { root: path.basename(photoRoot), phoneMode, folders, photos: [...photos.values()].map(publicPhoto) };
 }
 
+function cors(request, response) {
+  const origin = request.headers.origin || '';
+  if (origin === 'https://chunter-gh.github.io' || origin === 'http://127.0.0.1:3000' || origin === 'http://localhost:3000') {
+    response.setHeader('Access-Control-Allow-Origin', origin);
+    response.setHeader('Vary', 'Origin');
+  }
+  response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  response.setHeader('Access-Control-Allow-Private-Network', 'true');
+}
 function json(response, code, value) {
   response.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   response.end(JSON.stringify(value));
@@ -156,6 +166,8 @@ async function sortPhoto(id, folder) {
 
 const server = http.createServer(async (request, response) => {
   try {
+    cors(request, response);
+    if (request.method === 'OPTIONS') { response.writeHead(204); return response.end(); }
     const url = new URL(request.url, 'http://localhost');
     if (request.method === 'GET' && staticFiles.has(url.pathname)) {
       const [file, type] = staticFiles.get(url.pathname);
