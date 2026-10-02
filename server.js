@@ -166,6 +166,25 @@ const server = http.createServer(async (request, response) => {
       json(response, 200, list());
     } else if (request.method === 'POST' && url.pathname === '/api/scan') {
       json(response, 200, await scan());
+    } else if (request.method === 'GET' && url.pathname === '/api/thumbnail') {
+      const wanted = (url.searchParams.get('name') || '1.jpg').toLowerCase();
+      let file = [...photos.values()].find(f => path.basename(f).toLowerCase() === wanted);
+      if (!file) {
+        const direct = path.join(photoRoot, wanted);
+        try {
+          const stat = await fs.lstat(direct);
+          if (stat.isFile() && insidePhotoRoot(direct)) file = direct;
+        } catch {}
+      }
+      if (!file || !insidePhotoRoot(file)) return json(response, 404, { error: 'Thumbnail not found' });
+      const stat = await fs.lstat(file);
+      response.writeHead(200, {
+        'Content-Type': mime[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Content-Length': stat.size,
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      response.end(await fs.readFile(file));
     } else if (request.method === 'GET' && url.pathname === '/api/photo') {
       const file = photos.get(url.searchParams.get('id'));
       if (!file || !insidePhotoRoot(file)) return json(response, 404, { error: 'Photo not found' });
