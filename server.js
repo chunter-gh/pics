@@ -80,7 +80,6 @@ async function scan() {
       } else if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) {
         found.push(file);
       }
-      // Dirent symlinks are deliberately ignored, even when they point inside root.
     }
   }
   found.sort((a, b) => path.relative(photoRoot, a).localeCompare(path.relative(photoRoot, b), undefined, { numeric: true }));
