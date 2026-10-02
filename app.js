@@ -20,4 +20,4 @@ photoCard.addEventListener('pointerup',e=>finish(e,true));photoCard.addEventList
 folderButtons.forEach(b=>b.addEventListener('click',()=>sortInto(b.dataset.folder)));
 skipButton.addEventListener('click',()=>{if(!current||busy)return;skipped.add(current.id);message('Skipped '+current.name+'; it stays where it is.');showNext()});
 scanButton.addEventListener('click',async()=>{if(window.showDirectoryPicker){try{const dir=await window.showDirectoryPicker({mode:'readwrite'});message('Folder opened: '+dir.name+'. Termux will rescan its configured folder.');}catch(e){if(e.name!=='AbortError')message(e.message);}}await scan();});
-(async()=>{try{const data=await api('/api/photos');if(data.photos&&data.photos.length)apply(data);else await scan()}catch(e){message('Termux server is not reachable: '+e.message)}})();
+(async()=>{try{photoImage.src='/api/thumbnail?name=1.jpg&t='+Date.now();photoImage.alt='1.jpg';photoImage.hidden=false;empty.hidden=true;const data=await api('/api/photos');if(data.photos&&data.photos.length)apply(data);else await scan()}catch(e){message('Termux server is not reachable: '+e.message)}})();
