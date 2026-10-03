@@ -91,7 +91,7 @@ function confirmRename(name){name=cleanSpokenName(name);if(!name){retryRenameNam
   status.textContent='Renamed '+oldName+' to '+d.name;say('Renamed '+oldName+' to '+d.name)
  }catch(e){voicePrompt.textContent=e.message;status.textContent='Rename failed: '+e.message;voiceMode='confirmRename'}
 }
-function capitalizeName(name){const chars=Array.from(String(name||''));const index=chars.findIndex(char=>/\\p{L}/u.test(char));if(index<0)return chars.join('');chars[index]=chars[index].toLocaleUpperCase('en-US');return chars.join('')}
+function capitalizeName(name){const chars=Array.from(String(name||''));const index=chars.findIndex(char=>/\p{L}/u.test(char));if(index<0)return chars.join('');chars[index]=chars[index].toLocaleUpperCase('en-US');return chars.join('')}
 async function capitalizeFolder(record,kind){
  const message=kind==='tree'?folderTreeStatus:status;
  if(!record?.id){message.textContent=kind==='tree'?'Open a folder first.':'Tap a source or destination folder first.';return}
