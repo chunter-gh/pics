@@ -441,11 +441,11 @@ const server = http.createServer(async (request, response) => {
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 3000);
 server.listen(port, host, async () => {
-  console.log(`Pic Flip To Sort V36 Termux is ready at http://${host}:${port}`);
+  console.log(`Pic Flip To Sort V37 Termux is ready at http://${host}:${port}`);
   if (phoneMode) {
     try {
       const found = await scanPictureFolders();
-      console.log(`V36 found ${found.length} folders containing pictures under ${photoRoot}`);
-    } catch (error) { console.error('V36 picture-folder scan failed:', error.message); }
+      console.log(`V37 found ${found.length} folders containing pictures under ${photoRoot}`);
+    } catch (error) { console.error('V37 picture-folder scan failed:', error.message); }
   }
 });
