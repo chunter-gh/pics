@@ -209,7 +209,7 @@ async function setDestination(slot, id) {
 
 
 async function renameFolder(id, name) {
-  const clean = String(name || '').trim().replace(/[\\/:*?"<>|]/g, '').replace(/\\s+/g, ' ');
+  const clean = String(name || '').trim().replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ');
   if (!clean || clean === '.' || clean === '..') throw new Error('Invalid folder name');
   if (clean.length > 80) throw new Error('Folder name is too long');
   const resolved = await resolveFolder(id);
@@ -404,7 +404,7 @@ const server = http.createServer(async (request, response) => {
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 3000);
 server.listen(port, host, async () => {
-  console.log(`Pic Flip To Sort Pic Flip To Sort V33 Termux is ready at http://${host}:${port}`);
+  console.log(`Pic Flip To Sort V33 Termux is ready at http://${host}:${port}`);
   if (phoneMode) {
     try {
       const found = await scanPictureFolders();
